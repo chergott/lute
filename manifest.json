@@ -1,0 +1,58 @@
+{
+  "manifest_version": 2,
+  "name": "Lute",
+  "version": "4.0",
+  "short_name": "Lute",
+  "author":"CHergott",
+  "description": "Once you start listening to music services like Pandora and SoundCloud, Lute will give you a chance to keep that track.",
+  "icons": {
+    "128": "images/lute-logo128.png"
+  },
+  "offline_enabled": false,
+  "options_ui": {
+    "page": "options.html",
+    "chrome_style": true
+  },
+  "browser_action": {
+    "default_title": "Lute"
+  },
+  "permissions": [
+    "<all_urls>",
+    "webRequest",
+    "webRequestBlocking",
+    "downloads",
+    "tabs",
+    "storage"
+  ],
+  "background": {
+    "scripts": [
+      "js/luteBackground.js"
+    ],
+    "persistent": true
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.pandora.com/*"
+      ],
+      "js": [
+        "js/jquery-2.1.4.min.js",
+        "js/pandora.js"
+      ]
+    },
+    {
+      "matches": [
+        "*://*.soundcloud.com/*"
+      ],
+      "js": [
+        "js/jquery-2.1.4.min.js",
+        "js/soundcloud.js"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    "js/*",
+    "images/*",
+    "themes/*"
+  ]
+}

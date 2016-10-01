@@ -1,0 +1,132 @@
+/* 
+@name pz_stylesheet.css
+@author CyberPanther
+Last Modified: 1/25/2015
+*/
+#CHergott a{
+   color:#5a81b0;
+   text-decoration: none;
+}
+/* Top Nav
+    1. Branding Bar
+    2. Player Bar
+    3. Content Nav
+*/
+#topNav{
+    height:140px!important;
+}
+/* 1. Branding Bar */
+.stationChangeSelectorNoMenu p{
+    width:inherit!important;
+    max-width:inherit!important;
+}
+/* 2. Player Bar */
+#playerBar{
+    height:70px!important;
+}
+#playerBar .searchBox{
+    margin:8px 7px;
+    height:38px!important;
+    background-position:left center!important;
+}
+#playerBar .searchBox .searchInput{
+    height:100%!important;
+    font-size:1.2em!important;
+    top:0!important;
+}
+#playerBar .middlecolumn .buttons{
+	width:340px!important;
+}
+#playerBar #downloadButton{
+	float:left;
+    cursor:pointer;
+	margin: 6px 0 0 19px;
+     fill:#fff;
+     	display:block;
+	width:36px;
+	height:36px;
+}
+/* 3. Content Nav */
+.contentnav{
+    border:0px solid #FFF!important;
+    padding:0 7px;
+    height:40px!important;
+}
+.contentnav .rightcolumn div{
+    padding:0 12px;
+    float:right;
+    fill:#d6deea;
+    color: #d6deea;
+}
+.contentnav .update{
+	color:#ff9d02!important;
+}
+.contentnav .rightcolumn div span{
+    display:inline-block;
+    vertical-align: top;
+}
+.contentnav .rightcolumn div>div{
+    height: 20px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: normal;
+    padding-top: 6px;
+    white-space: nowrap;
+}
+.contentnav .rightcolumn div>div:hover{
+    color:#ff9d02;
+    fill:#ff9d02;
+}
+/* END Top Nav */
+/* Main */
+#main{
+    top:160px!important;
+}
+#main .home{
+    border-radius:20px 20px 8px 8px;
+}
+#mainContentContainer{
+    width:100%;
+}
+/* Station Content */
+.stationContent{
+    background: transparent!important;
+}
+.stationContent #stationSortButtons div{
+	width:88px!important;
+}
+.stationContent #stationSortButtons #stationSortDate{
+    border-radius:20px 0 0 0;
+}
+#footer{
+    width:100%;
+}
+/* Structure */
+.columns{
+    min-width:1080px;
+}
+.leftcolumn, .rightcolumn{
+	width:346px !important;
+	padding: 6px 7px 2px 7px!important;
+	margin: 0!important;
+}
+/* ZERO Watermark */
+.zeroWatermark{
+	position:relative;
+	z-index:1;
+}
+.zeroWatermark:after{
+	content: "";
+  	background: url('chrome-extension://__MSG_@@extension_id__/images/icon128.png');
+	background-repeat:no-repeat;
+ 	opacity: 0.1;
+	top:0;
+	right:0;
+	bottom:0;
+	left:0;
+	background-size:contain;
+ 	position: absolute;
+	background-position:center center;
+ 	z-index: -1;
+}
+

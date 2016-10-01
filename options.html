@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Lute Options</title>
+  <script src="/js/jquery-2.1.4.min.js"></script>
+  <script src="/js/luteIcon.js"></script>
+  <script src="/js/options.js"></script>
+  <link rel="stylesheet" type="text/css" href="/css/options.css">
+</head>
+<body>
+  <!-- Main -->
+  <main id="content">
+    <!-- Status -->
+    <div id="status"></div>
+    <!-- Icon -->
+    <section id="icon">
+      <!-- Icon Settings -->
+      <h2 class="subtitle">Icon</h2>
+      <p class="tip">Color Tips: <a class="link" href="https://material.google.com/style/color.html" target="_blank"> Google Design</a></p>
+      <!-- Icon Colors -->
+      <div id="icon-settings">
+        <!-- Outside Color -->
+        <div class="setting">
+          <label>Outside Color</label>
+          <input id="outside-color" class="color" type="text"/>
+        </div>
+        <!-- Border Color -->
+        <div class="setting">
+          <label>Border Color</label>
+          <input id="border-color" class="color" type="text"/>
+        </div>
+        <!-- Service Color -->
+        <div class="setting">
+          <label>Service</label>
+          <select id="service-colors">
+            <option selected value="#009688">Lute</option>
+            <option value="#369">Pandora</option>
+            <option value="#f70">SoundCloud</option>
+          </select>
+        </div>
+      </div>
+      <!-- Icon Canvas -->
+      <canvas id="icon-canvas" width="180" height="180"></canvas>
+      <!-- Icon Buttons -->
+      <div id="icon-buttons">
+        <div id="applyIcon" class="button">Apply</div>
+        <div id="animateIcon" class="button">Animate</div>
+      </div>
+    </section>
+    <!-- Themes -->
+    <section id="themes">
+      <h2 class="subtitle">Themes</h2>
+      <!-- Pandora ZERO -->
+      <div class="setting">
+        <label>Pandora ZERO</label>
+        <select id="pz">
+          <option id="pz_enabled" value="true">Enabled</option>
+          <option id="pz_disabled" value="false">Disabled</option>
+        </select>
+      </div>
+    </section>
+    <!-- Footer -->
+    <footer>
+      <!-- Reset -->
+      <button id="reset">Reset</button>
+      <!-- Version -->
+      <p>Current Version: <span id="version"></span></p>
+    </footer>
+  </main>
+</body>
+
+</html>
