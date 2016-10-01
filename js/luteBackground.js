@@ -49,10 +49,10 @@ lute.start = function(service) {
     }, ["requestBody"]);
 
     chrome.browserAction.setTitle({
-        title: "Lute is listening to " + service.name + '.'
+        title: "Lute is listening to " + service.name
     });
 
-    log('Network request listener started for service "' + service.name + '" on tabId ' + lute.tabId + '.', 1);
+    log('Network request listener started for service "' + service.name + '" on tabId ' + lute.tabId, 1);
 };
 
 // Reset Lute
@@ -65,7 +65,7 @@ lute.reset = function() {
     });
 
     chrome.browserAction.setTitle({
-        title: "Waiting for Pandora or SoundCloud."
+        title: "Waiting for Pandora or SoundCloud"
     });
 
     setIcon(0);
@@ -95,6 +95,7 @@ lute.notify = function() {
                 border: data.icon["border-color"]
             };
             setIcon(75, colors);
+            // animateIcon(0, 75);
             log(lute.audioFound.filename + " is ready to download.", 2);
         });
     }
@@ -132,7 +133,12 @@ lute.downloadAudioFile = function() {
             url: audioFile.url,
             filename: audioFile.filename
         });
-    }
+        let metadata = encodeURIComponent(JSON.stringify(lute.audioFound));
+        let json = document.createElement('a');
+        json.href = 'data:text/json;charset=utf-8,' + metadata;
+        json.download = audioFile.artist + '-' + audioFile.songName + '.json';
+        json.click();
+    };
 };
 
 /* isSupportedService
@@ -194,15 +200,16 @@ chrome.browserAction.onClicked.addListener(function() {
 /* Message passing from Content Scripts */
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (!request.hasOwnProperty("lute")) return;
-    log("Message received from content script: " + JSON.stringify(request.lute), 1);
+    let message = request.lute;
+    log("Message received from content script: " + JSON.stringify(message), 1);
 
     /* Message Meta Data */
-    if (request.lute.metaData) {
+    if (message.metaData) {
         validateMetaData(request.lute.metaData);
     }
 
     /* Message Actions */
-    let action = request.lute.action;
+    let action = message.action;
     switch (action) {
         case 'downloadAudioFile':
             lute.downloadAudioFile();
@@ -228,6 +235,7 @@ chrome.runtime.onInstalled.addListener(function(details) {
     });
 });
 
+/* Supplementary Functions */
 function hasMatch(needles, haystack) {
     let hasMatch = false;
     needles.forEach((needle) => {
@@ -247,7 +255,7 @@ function serviceRequestListener(request) {
     //log("Request from tabId " + request.tabId + ": " + JSON.stringify(request),1);
     let url = request.url;
     let service = lute.service;
-    let unsupportedMatches = lute.service.unsupported ? lute.service.unsupported : false;
+    let unsupportedMatches = service.unsupported ? service.unsupported : false;
     let hasUnsupportedMatch = false;
 
     // check if url has unsupported match
@@ -672,19 +680,27 @@ function setIcon(angle, colors) {
 }
 
 /* Animate */
-function animateLuteIcon(canvas, startAngle, endAngle, colors) {
-    var plusminus = 1,
-        degrees = startAngle;
+function animateIcon(startAngle, endAngle) {
+    let plusminus = 1;
     if (startAngle > endAngle) {
         plusminus = -1;
     }
-    var animate = setTimeout(function() {
-        if (degrees === endAngle) {
-            clearTimeout(animate);
-        } else {
-            degrees += plusminus;
-            drawLuteIcon(canvas, degrees, colors);
-            console.log("Box is at " + (degrees) + " degrees.");
-        }
-    }, 50);
+    let degrees = startAngle;
+    chrome.storage.sync.get("icon", function(data) {
+        let serviceColor = lute.service.color;
+        var colors = {
+            inside: serviceColor,
+            outside: data.icon["outside-color"],
+            border: data.icon["border-color"]
+        };
+        let animate = setInterval(function() {
+            if (degrees === endAngle) {
+                clearInterval(animate);
+            } else {
+                degrees += plusminus;
+                setIcon(degrees, colors);
+                console.log("Box is at " + degrees + " degrees.");
+            }
+        }, 50);
+    });
 }
