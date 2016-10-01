@@ -1,10 +1,10 @@
 {
   "manifest_version": 2,
   "name": "Lute",
-  "version": "4.0",
+  "version": "1.0.2",
   "short_name": "Lute",
   "author":"CHergott",
-  "description": "Once you start listening to music services like Pandora and SoundCloud, Lute will give you a chance to keep that track.",
+  "description": "Download music from music services like Pandora and SoundCloud.",
   "icons": {
     "128": "images/lute-logo128.png"
   },
