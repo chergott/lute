@@ -18,6 +18,10 @@ var observer = new window.WebKitMutationObserver(function(mutations) {
             var c_colon = document_title.indexOf(":");
             songName = document_title.substring(c_colon + 1);
             artist = document_title.substring(0, c_colon);
+        } else if (document_title.indexOf('~') > -1) {
+            let c_tilda = document_title.indexOf('~');
+            songName = document_title.substring(c_tilda + 1);
+            artist = document_title.substring(0, c_tilda);
         } else songName = document_title;
 
         if (songName.indexOf(" by ") > -1) {

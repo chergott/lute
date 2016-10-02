@@ -91,8 +91,8 @@ lute.notify = function() {
         chrome.storage.sync.get("icon", function(data) {
             var colors = {
                 inside: serviceColor,
-                outside: data.icon["outside-color"],
-                border: data.icon["border-color"]
+                outside: data.icon.outsideColor,
+                border: data.icon.borderColor
             };
             setIcon(75, colors);
             // animateIcon(0, 75);
@@ -133,13 +133,21 @@ lute.downloadAudioFile = function() {
             url: audioFile.url,
             filename: audioFile.filename
         });
-        let metadata = encodeURIComponent(JSON.stringify(lute.audioFound));
-        let json = document.createElement('a');
-        json.href = 'data:text/json;charset=utf-8,' + metadata;
-        json.download = audioFile.artist + '-' + audioFile.songName + '.json';
-        json.click();
+        chrome.storage.sync.get('luteCompile', function(data) {
+            if (data.luteCompile === 'enabled') {
+                lute.downloadMetadata();
+            }
+        });
     };
 };
+
+lute.downloadMetadata = function() {
+    let metadata = encodeURIComponent(JSON.stringify(lute.audioFound));
+    let json = document.createElement('a');
+    json.href = 'data:text/json;charset=utf-8,' + metadata;
+    json.download = lute.audioFound.artist + '-' + lute.audioFound.songName + '.json';
+    json.click();
+}
 
 /* isSupportedService
  * checks if the url is a match to a supported service
@@ -223,15 +231,16 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 });
 
 chrome.runtime.onInstalled.addListener(function(details) {
-    setIcon(0);
+    lute.reset();
     chrome.storage.sync.set({
-        "themes": {
-            "pandora-zero": true
+        themes: {
+            pandoraZero: 'enabled'
         },
-        "icon": {
-            "outside-color": "transparent",
-            "border-color": "#9E9E9E"
-        }
+        icon: {
+            outsideColor: "transparent",
+            borderColor: "#9E9E9E"
+        },
+        luteCompile: 'disabled'
     });
 });
 
@@ -298,7 +307,7 @@ function validateMetaData(metaData) {
     }
 
     // create filename
-    lute.audioFound.filename = (lute.audioFound.artist + "-" + lute.audioFound.songName).replace(/^[\\\/:?:<>|]/gi, '') + lute.audioFound.fileExtension;
+    lute.audioFound.filename = (lute.audioFound.artist + "-" + lute.audioFound.songName).replace(/^[\\\/\.:?:<>|]/gi, '') + lute.audioFound.fileExtension;
     log('Metadata collected for audio file: ' + JSON.stringify(lute.audioFound), 1);
     lute.notify();
 }

@@ -4,50 +4,50 @@ $(document).ready(function() {
     $("#version").html(chrome.app.getDetails().version);
 
     // Get saved settings if any
-    chrome.storage.sync.get(["themes", "icon"], function(data) {
-        var outsideColor = data.icon["outside-color"];
-        var borderColor = data.icon["border-color"];
-        lute.outsideColor = outsideColor;
-        lute.borderColor = borderColor;
-        $("#border-color").val(borderColor);
-        $("#outside-color").val(outsideColor);
-        if (data.themes["pandora-zero"] == true) {
-            document.getElementById("pz_enabled").selected = "true";
-        } else {
-            document.getElementById("pz_disabled").selected = "true";
-        }
+    chrome.storage.sync.get(['themes', 'icon', 'luteCompile'], function(data) {
+        $("#border-color").val(data.icon.borderColor);
+        $("#outside-color").val(data.icon.outsideColor);
+        $('#pandora-zero').val(data.themes.pandoraZero);
+        $('#lute-compile').val(data.luteCompile);
         setIcon(75);
     });
-
-    // Pandora ZERO Enabled/ Disabled
-    $("#pz").change(function() {
-        var pz_enabled = ($("#pz").val() === "true") ? true : false;
-        var settings =
-            chrome.storage.sync.set({
-                "themes": {
-                    "pandora-zero": pz_enabled
-                }
-            }, setStatus("Pandora ZERO is now " + (pz_enabled ? "enabled" : "disabled") + "."));
+    // Pandora ZERO enabled/ disabled
+    $("#pandora-zero").change(function() {
+        let $val = $(this).val();
+        chrome.storage.sync.set({
+            themes: {
+                pandoraZero: $val
+            }
+        }, setStatus("Pandora ZERO is now " + $val + "."));
+    });
+    // Lute-Compile enabled/ disabled
+    $("#lute-compile").change(function() {
+        let $val = $(this).val();
+        chrome.storage.sync.set({
+            luteCompile: $val
+        }, setStatus("Lute-Compile is now " + $val + "."));
     });
 
     // Reset to Default Settings
     $("#reset").click(function() {
         chrome.storage.sync.clear(function() {
             chrome.storage.sync.set({
-                "themes": {
-                    "pandora-zero": true
+                themes: {
+                    pandoraZero: 'enabled'
                 },
-                "icon": {
-                    "outside-color": "transparent",
-                    "border-color": "#9E9E9E"
-                }
+                luteCompile: 'disabled',
+                icon: {
+                    outsideColor: "transparent",
+                    borderColor: "#9E9E9E"
+                },
             }, function() {
-                setIcon(75);
                 setStatus("Lute settings have been reset.");
+                setIcon(75);
             });
-            $("#pz").val("true");
             $("#outside-color").val("transparent");
             $("#border-color").val("#9E9E9E");
+            $("#pandora-zero").val("enabled");
+            $('#lute-compile').val('disabled');
         });
     });
 
@@ -72,9 +72,9 @@ $(document).ready(function() {
     // applyIconColors
     function applyIconColors() {
         chrome.storage.sync.set({
-            "icon": {
-                "border-color": $("#border-color").val(),
-                "outside-color": $("#outside-color").val()
+            icon: {
+                borderColor: $("#border-color").val(),
+                outsideColor: $("#outside-color").val()
             }
         }, function() {
             setStatus("Sick icon broski.");
