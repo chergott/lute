@@ -22,13 +22,14 @@ An additional step of combining all the files together would fix this but requir
 This optimizes load time times and has a greater security for their media files.
 
 Future Services:
-Grooveshark, Google Music
+Spotify, Google Music
 
 Why future? The above services only use "chopped-up" files (a compilation .xhr files).
 The fix would need to combine multiple .xhr files into one .mp3 which requires more server power than a chrome extension can allow.
 */
-log("Lute " + chrome.app.getDetails().version + " has started.", 2);
-log("Legend [ '-': General, '*': Media, '!': Important ]\n- Refresh Pandora or SoundCloud to get started.", 2);
+
+log("Lute " + chrome.app.getDetails().version + " has started.", 1);
+log("Legend [ '-': General, '*': Media, '!': Important ]\n- Refresh Pandora or SoundCloud to get started.", 1);
 
 let lute = top.lute || {
     downloadReady: false,
@@ -40,7 +41,7 @@ let lute = top.lute || {
 const LUTE_COLOR = '#009688';
 
 // Start Lute
-lute.start = function(service) {
+lute.start = function (service) {
     lute.reset();
 
     lute.service = service;
@@ -54,11 +55,18 @@ lute.start = function(service) {
         title: "Lute is listening to " + service.name
     });
 
-    log('Network request listener started for service "' + service.name + '" on tabId ' + lute.tabId, 1);
+    log('Lute is listening to ' + service.name + ' on tabId ' + lute.tabId, 2);
+};
+
+// Stop Lute
+lute.stop = function () {
+    chrome.webRequest.onBeforeRequest.removeListener(serviceRequestListener);
+    log('Lute is no longer listening to ' + lute.service.name, 2);
+    lute.reset();
 };
 
 // Reset Lute
-lute.reset = function() {
+lute.reset = function () {
     lute.downloadReady = false;
     lute.audioFound = {};
 
@@ -73,45 +81,94 @@ lute.reset = function() {
     setIcon(0);
 };
 
-// Notify Lute
-lute.notify = function() {
-    if (lute.isDownloadReady()) {
-        // set icon title
-        chrome.browserAction.setTitle({
-            title: lute.audioFound.filename
-        });
-        // set icon background color
-        let serviceColor = lute.service.color;
-        chrome.browserAction.setBadgeBackgroundColor({
-            "color": serviceColor
-        });
-        // set icon badge text
-        chrome.browserAction.setBadgeText({
-            text: "1"
-        });
-        // set icon image
-        chrome.storage.sync.get("icon", function(data) {
-            var colors = {
-                inside: serviceColor,
-                outside: data.icon.outsideColor,
-                border: data.icon.borderColor
-            };
-            setIcon(75, colors);
-            // animateIcon(0, 75);
-            log(lute.audioFound.filename + " is ready to download.", 2);
-        });
-    }
-};
+function serviceRequestListener(request) {
+    //log("Request from tabId " + request.tabId + ": " + JSON.stringify(request),1);
+    let url = request.url;
+    let service = lute.service;
+    let unsupportedMatches = service.unsupported ? service.unsupported : false;
+    let hasUnsupportedMatch = false;
 
-// Stop Lute
-lute.stop = function() {
-    chrome.webRequest.onBeforeRequest.removeListener(serviceRequestListener);
-    log('Lute is no longer listening to ' + lute.service.name, 1);
-    lute.reset();
-};
+    // check if url has unsupported match i.e chopped-up files
+    if (unsupportedMatches) {
+        for (let i in unsupportedMatches) {
+            if (hasMatch(unsupportedMatches[i].matches, url)) {
+                log(unsupportedMatches[i].message + ' found on service ' + lute.service.name + ' on ' + url, 3);
+                lute.reset();
+                return false;
+            }
+        }
+    }
+    // check if url is a media/ audio file
+    let matches = lute.service.matches;
+    if (hasMatch(matches, url)) {
+        lute.audioFound.url = url;
+        log('URL found for audio file: ' + url, 1);
+        getMetadataFromPage();
+        return true;
+    }
+}
+
+// Get Metadata from Page
+function getMetadataFromPage() {
+    chrome.tabs.query({
+        active: true,
+        currentWindow: true
+    }, function (tabs) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+            action: "getMetadata"
+        }, function (response) {
+            console.debug('response received: ', response);
+            lute.audioFound.metadata = response.metadata;
+            notify();
+        });
+    });
+}
+
+function notify() {
+    // set icon title
+    chrome.browserAction.setTitle({
+        title: lute.audioFound.filename
+    });
+    // set icon background color
+    let serviceColor = lute.service.color;
+    chrome.browserAction.setBadgeBackgroundColor({
+        "color": serviceColor
+    });
+    // set icon badge text
+    chrome.browserAction.setBadgeText({
+        text: "1"
+    });
+    // set icon image
+    chrome.storage.sync.get("icon", function (data) {
+        var colors = {
+            inside: serviceColor,
+            outside: data.icon.outsideColor,
+            border: data.icon.borderColor
+        };
+        setIcon(75, colors);
+        // animateIcon(0, 75);
+        log(lute.audioFound.filename + " is ready to download.", 2);
+    });
+}
+
+/* Supplementary Functions */
+function hasMatch(needles, haystack) {
+    let hasMatch = false;
+    needles.forEach((needle) => {
+        let regEx = new RegExp(needle);
+        let isMatch = regEx.test(haystack);
+        if (isMatch) {
+            // log('Found ' + needle + ' in ' + haystack, 2);
+            hasMatch = true;
+        } else {
+            // log(needle + ' is not found in ' + haystack, 1);
+        }
+    });
+    return hasMatch;
+}
 
 // Check if download is ready
-lute.isDownloadReady = function() {
+lute.isDownloadReady = function () {
     if (!lute.audioFound.hasOwnProperty('url')) {
         log('Download not ready because there isn\'t a url for the media file', 1);
         lute.downloadReady = false;
@@ -127,28 +184,37 @@ lute.isDownloadReady = function() {
 }
 
 // Download audio file
-lute.downloadAudioFile = function() {
-    if (lute.isDownloadReady()) {
-        let audioFile = lute.audioFound;
-        log("Downloading audio: " + JSON.stringify(audioFile), 1);
-        chrome.downloads.download({
-            url: audioFile.url,
-            filename: audioFile.filename + audioFile.metadata.fileExtension
-        });
-        chrome.storage.sync.get('luteCompile', function(data) {
-            if (data.luteCompile === 'enabled') {
-                lute.downloadMetadata();
-            }
-        });
-    };
+lute.downloadAudioFile = function () {
+    // if (lute.isDownloadReady()) {
+    let audioFile = lute.audioFound;
+    let url = audioFile.url;
+    let metadata = audioFound.metadata;
+    let filename = audioFile.filename + audioFile.metadata.fileExtension;
+
+    downloadFile(url, filename);
+
+    chrome.storage.sync.get('luteCompile', function (data) {
+        if (data.luteCompile === 'enabled') {
+            downloadJSONFile(metadata, filename);
+        }
+    });
+    // };
 };
 
-lute.downloadMetadata = function() {
-    let metadata = encodeURIComponent(JSON.stringify(lute.audioFound.metadata));
-    let json = document.createElement('a');
-    json.href = 'data:text/json;charset=utf-8,' + metadata;
-    json.download = lute.audioFound.filename + '.json';
-    json.click();
+function downloadFile(url, filename) {
+    log("Downloading file: " + filename + " from " + url, 1);
+    chrome.downloads.download({
+        url,
+        filename
+    });
+}
+
+function downloadJSONFile(json, filename) {
+    json = encodeURIComponent(JSON.stringify(json));
+    let anchor = document.createElement('a');
+    anchor.href = 'data:text/json;charset=utf-8,' + json;
+    anchor.download = filename + '.json';
+    anchor.click();
 }
 
 /* isSupportedService
@@ -156,7 +222,7 @@ lute.downloadMetadata = function() {
  * @params url of a new/ updated browser tab
  * @return a service object or false
  */
-lute.isSupportedService = function(url) {
+lute.isSupportedService = function (url) {
     let isPandora = url.match(/pandora.com/);
     let isSoundCloud = url.match(/soundcloud.com/);
 
@@ -183,7 +249,7 @@ lute.isSupportedService = function(url) {
 };
 
 /* Chrome API */
-chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
+chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
     if (changeInfo.status == "loading") {
         let supportedService = lute.isSupportedService(tab.url);
 
@@ -198,17 +264,18 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
     }
 });
 
-chrome.tabs.onRemoved.addListener(function(tabId) {
+chrome.tabs.onRemoved.addListener(function (tabId) {
     if (tabId == lute.tabId) {
         lute.stop();
     }
 });
 
-chrome.browserAction.onClicked.addListener(function() {
+chrome.browserAction.onClicked.addListener(function () {
     lute.downloadAudioFile();
 });
+
 /* Message passing from Content Scripts */
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     if (!request.hasOwnProperty("lute")) return;
     let message = request.lute;
     log("Message received from content script: " + JSON.stringify(message), 1);
@@ -232,7 +299,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     }
 });
 
-chrome.runtime.onInstalled.addListener(function(details) {
+chrome.runtime.onInstalled.addListener(function (details) {
     lute.reset();
     chrome.storage.sync.set({
         themes: {
@@ -246,48 +313,6 @@ chrome.runtime.onInstalled.addListener(function(details) {
     });
 });
 
-/* Supplementary Functions */
-function hasMatch(needles, haystack) {
-    let hasMatch = false;
-    needles.forEach((needle) => {
-        let regEx = new RegExp(needle);
-        let isMatch = regEx.test(haystack);
-        if (isMatch) {
-            // log('Found ' + needle + ' in ' + haystack, 2);
-            hasMatch = true;
-        } else {
-            // log(needle + ' is not found in ' + haystack, 1);
-        }
-    });
-    return hasMatch;
-}
-
-function serviceRequestListener(request) {
-    //log("Request from tabId " + request.tabId + ": " + JSON.stringify(request),1);
-    let url = request.url;
-    let service = lute.service;
-    let unsupportedMatches = service.unsupported ? service.unsupported : false;
-    let hasUnsupportedMatch = false;
-
-    // check if url has unsupported match i.e chopped-up files
-    if (unsupportedMatches) {
-        for (let i in unsupportedMatches) {
-            if (hasMatch(unsupportedMatches[i].matches, url)) {
-                log(unsupportedMatches[i].message + ' found on service ' + lute.service.name + ' on ' + url, 3);
-                lute.reset();
-                return false;
-            }
-        }
-    }
-    // check if url is a media/ audio file
-    let matches = lute.service.matches;
-    if (hasMatch(matches, url)) {
-        lute.audioFound.url = url;
-        log('URL found for audio file: ' + url, 1);
-        lute.notify();
-        return true;
-    }
-}
 
 function validateMetaData(metadata) {
     const DEFAULT_PROPERTIES = {
@@ -336,9 +361,11 @@ function log(msg, lvl) {
 ***********************************************************************/
 /* Draw Icon */
 function setIcon(angle, colors) {
+    const CANVAS_LENGTH = 16;
+
     let tmpCanvas = document.createElement("canvas");
-    tmpCanvas.height = 180;
-    tmpCanvas.width = 180;
+    tmpCanvas.height = CANVAS_LENGTH;
+    tmpCanvas.width = CANVAS_LENGTH;
 
     let ctx = tmpCanvas.getContext("2d");
     colors = colors ? colors : {
@@ -347,21 +374,20 @@ function setIcon(angle, colors) {
         outside: 'transparent'
     };
 
-    const CANVAS_LENGTH = tmpCanvas.height;
-    const PADDING = CANVAS_LENGTH * .05;
+    const PADDING = CANVAS_LENGTH * 0.05;
     const ICON_LENGTH = CANVAS_LENGTH - 2 * PADDING;
     const THETA = angle;
     const THICKNESS = 4;
 
     // Horizontal percentages determined for fX, sX, and lX respectively
     // X1 + X2 + X3 = 1
-    const X1 = .60;
-    const X2 = .30;
+    const X1 = 0.60;
+    const X2 = 0.30;
     const X3 = 1 - X1 - X2;
     // Vertical percentages determined for fY, sY, and BOX_HEIGHT
     // Y1 + Y2 + 2 * Y3 = 1
-    const Y1 = .18;
-    const Y2 = .10;
+    const Y1 = 0.18;
+    const Y2 = 0.10;
     const Y3 = (1 - Y1 - Y2) / 2;
     /*
     For the horizontal line...
@@ -580,11 +606,11 @@ function setIcon(angle, colors) {
 
     // set Extension Icon
     chrome.browserAction.setIcon({
-        imageData: ctx.getImageData(0, 0, 180, 180)
+        imageData: ctx.getImageData(0, 0, CANVAS_LENGTH, CANVAS_LENGTH)
     });
 
     function drawMusicNote(color) {
-        /* Music Note
+        /* 
         1. Music Note Outline
         2. Music Note Circles on outline legs (two)
         */
@@ -694,14 +720,14 @@ function animateIcon(startAngle, endAngle) {
         plusminus = -1;
     }
     let degrees = startAngle;
-    chrome.storage.sync.get("icon", function(data) {
+    chrome.storage.sync.get("icon", function (data) {
         let serviceColor = lute.service.color;
         var colors = {
             inside: serviceColor,
             outside: data.icon["outside-color"],
             border: data.icon["border-color"]
         };
-        let animate = setInterval(function() {
+        let animate = setInterval(function () {
             if (degrees === endAngle) {
                 clearInterval(animate);
             } else {

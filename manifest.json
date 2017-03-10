@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Lute",
-  "version": "4.1.2",
+  "version": "5.0.0",
   "short_name": "Lute",
   "author":"CHergott",
   "description": "Download music from music services like Pandora and SoundCloud.",
@@ -10,7 +10,7 @@
   },
   "offline_enabled": false,
   "options_ui": {
-    "page": "options.html",
+    "page": "html/options.html",
     "chrome_style": true
   },
   "browser_action": {
