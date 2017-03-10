@@ -46,6 +46,8 @@ var observer = new window.WebKitMutationObserver(function(mutations) {
             isAudio = false;
         }
         let albumArtwork = $('.sc-media-image span.sc-artwork').css('background-image');
+        albumArtwork =  albumArtwork.replace('url(','').replace(')','').replace(/\"/gi, "");
+
         if (isAudio) {
             // send metaData to luteBackground.js
             chrome.runtime.sendMessage({

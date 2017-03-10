@@ -32,7 +32,9 @@ log("Legend [ '-': General, '*': Media, '!': Important ]\n- Refresh Pandora or S
 
 let lute = top.lute || {
     downloadReady: false,
-    audioFound: {}
+    audioFound: {
+        metadata: []
+    }
 };
 
 const LUTE_COLOR = '#009688';
@@ -131,7 +133,7 @@ lute.downloadAudioFile = function() {
         log("Downloading audio: " + JSON.stringify(audioFile), 1);
         chrome.downloads.download({
             url: audioFile.url,
-            filename: audioFile.filename
+            filename: audioFile.filename + audioFile.metadata.fileExtension
         });
         chrome.storage.sync.get('luteCompile', function(data) {
             if (data.luteCompile === 'enabled') {
@@ -142,10 +144,10 @@ lute.downloadAudioFile = function() {
 };
 
 lute.downloadMetadata = function() {
-    let metadata = encodeURIComponent(JSON.stringify(lute.audioFound));
+    let metadata = encodeURIComponent(JSON.stringify(lute.audioFound.metadata));
     let json = document.createElement('a');
     json.href = 'data:text/json;charset=utf-8,' + metadata;
-    json.download = lute.audioFound.artist + '-' + lute.audioFound.songName + '.json';
+    json.download = lute.audioFound.filename + '.json';
     json.click();
 }
 
@@ -211,7 +213,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     let message = request.lute;
     log("Message received from content script: " + JSON.stringify(message), 1);
 
-    /* Message Meta Data */
+    /* Handle Metadata from content scripts */
     if (message.metaData) {
         validateMetaData(request.lute.metaData);
     }
@@ -267,7 +269,7 @@ function serviceRequestListener(request) {
     let unsupportedMatches = service.unsupported ? service.unsupported : false;
     let hasUnsupportedMatch = false;
 
-    // check if url has unsupported match
+    // check if url has unsupported match i.e chopped-up files
     if (unsupportedMatches) {
         for (let i in unsupportedMatches) {
             if (hasMatch(unsupportedMatches[i].matches, url)) {
@@ -287,7 +289,7 @@ function serviceRequestListener(request) {
     }
 }
 
-function validateMetaData(metaData) {
+function validateMetaData(metadata) {
     const DEFAULT_PROPERTIES = {
         songName: "unknown",
         artist: "unknown",
@@ -295,20 +297,24 @@ function validateMetaData(metaData) {
         album: "unknown",
         albumArtwork: "unknown.jpg"
     };
-
+    lute.audioFound.metadata = {};
     // If specific metaData information is missing, use the default property
     for (var prop in DEFAULT_PROPERTIES) {
-        if (metaData.hasOwnProperty(prop)) {
-            lute.audioFound[prop] = metaData[prop];
+        if (metadata.hasOwnProperty(prop)) {
+            lute.audioFound.metadata[prop] = metadata[prop];
         } else {
-            lute.audioFound[prop] = DEFAULT_PROPERTIES[prop];
+            lute.audioFound.metadata[prop] = DEFAULT_PROPERTIES[prop];
             log('Metadata doesn\'t contain the property "' + prop + '" and will use the default value "' + DEFAULT_PROPERTIES[prop] + '"', 1);
         }
     }
 
     // create filename
-    lute.audioFound.filename = (lute.audioFound.artist + "-" + lute.audioFound.songName).replace(/^[\\\/\.:?:<>|]/gi, '') + lute.audioFound.fileExtension;
-    log('Metadata collected for audio file: ' + JSON.stringify(lute.audioFound), 1);
+    let artist = lute.audioFound.metadata.artist;
+    let songName = lute.audioFound.metadata.songName;
+    let fileExtension = lute.audioFound.metadata.fileExtension;
+    lute.audioFound.filename = (artist + "-" + songName).replace(/^[\\\/\.:?:<>|]/gi, '');
+
+    log('Metadata collected for audio file: ' + JSON.stringify(lute.audioFound.metadata), 1);
     lute.notify();
 }
 
@@ -385,8 +391,6 @@ function setIcon(angle, colors) {
 
     const BOX_LENGTH = Math.sqrt(Math.pow(fX, 2) + Math.pow(fY, 2));
     const BOX_WIDTH = Math.sqrt(Math.pow(sX, 2) + Math.pow(sY, 2));
-
-
 
     /*
     1. Base: Bottom section of Lute, doesn't depend on 'theta'
@@ -508,21 +512,21 @@ function setIcon(angle, colors) {
         x: PADDING + sX,
         y: CANVAS_LENGTH - PADDING - fY - sY - BOX_HEIGHT - LID_HEIGHT
     });
-    // Lid Side Center
+
     var lidSideC = {
         p1: getCenterPoint(lidSideL.p1, lidSideR.p1),
         p2: getCenterPoint(lidSideL.p2, lidSideR.p2),
         p3: getCenterPoint(lidSideL.p3, lidSideR.p3),
         p4: getCenterPoint(lidSideL.p4, lidSideR.p4)
     };
-    // Lid Front
+
     var lidFront = {
         p1: lidSideL.p1,
         p2: lidSideL.p2,
         p3: lidSideR.p2,
         p4: lidSideR.p1
     };
-    // Lid Top
+
     var lidTop = {
         p1: {
             x: PADDING + sX,
@@ -532,7 +536,7 @@ function setIcon(angle, colors) {
         p3: lidSideR.p1,
         p4: lidSideR.p4
     };
-    // Lid Inside
+
     var lidInside = {
         p1: lidSideL.p2,
         p2: lidSideL.p3,
@@ -666,7 +670,7 @@ function setIcon(angle, colors) {
             }
         }
     }
-    // rotatePoint
+
     function rotatePoint(origin, p) {
         const radians = Math.PI * THETA / 180;
         return {
@@ -674,12 +678,7 @@ function setIcon(angle, colors) {
             y: Math.sin(radians) * (p.x - origin.x) + Math.cos(radians) * (p.y - origin.y) + origin.y
         };
     }
-    /**
-     * getCenterPoint
-     * @param p1 point 1
-     * @param p2 point 2
-     * @return the center point between p1 and p2
-     */
+
     function getCenterPoint(p1, p2) {
         return {
             x: (p1.x + p2.x) / 2,
