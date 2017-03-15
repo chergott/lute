@@ -22,40 +22,27 @@ $(document).ready(function () {
                 });
         });
 
-    // Send audio metaData when audio information is updated
-    let $triggerElement = $('.NowPlaying__centerWrapper');
-    console.log('$triggerElement: ', $triggerElement);
-
-    $triggerElement.bind("DOMSubtreeModified", function () {
-        console.debug('modified...');
-        setTimeout(function () {
-            // send metaData to luteBackground.js
-            chrome.runtime.sendMessage({
-                lute: {
-                    metaData: getMetadata()
-                }
-            });
-        }, 100);
-
-
-    });
 
     function getMetadata() {
-        var fileExtension;
-        var albumArtwork = $('.nowPlayingTopInfo__artContainer__art').attr('src');
-        var isMp3 = ($(".logosubscriber").css("display") === "block" || $(".logobusiness").css("display") === "block");
         // Pandora One = .mp3
         // Pandora Business = .mp3 ?
         // Pandora free = .m4a
+        var isMp3 = document.title.match(/plus/) > -1;
         var metadata = {
-            songName: $(".Tuner__Audio__TrackDetail__title").text(),
-            artist: $(".Tuner__Audio__TrackDetail__artist").text(),
-            album: $('.nowPlayingTopInfo__current__albumName').text(),
+            songName: $(".Tuner__Audio__TrackDetail__title").text() || 'unknown',
+            artist: $(".Tuner__Audio__TrackDetail__artist").text() || 'unknown',
+            album: $('.nowPlayingTopInfo__current__albumName').text() || 'unknown',
             fileExtension: isMp3 ? '.mp3' : '.m4a',
-            albumArtwork: albumArtwork
+            albumArtwork: $('.nowPlayingTopInfo__artContainer__art').css('background-image') || 'unknown'
         };
+        console.log('metadata: ', metadata);
         return metadata;
     }
+
+    function extractUrlFromBackgroundImage(url) {
+        return url.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
+    }
+
 
     function pandoraZEROTheme() {
 
@@ -95,5 +82,7 @@ $(document).ready(function () {
 
         $downloadButton.insertAfter('.skipButton');
         $refreshButton.insertAfter('.myprofile');
+
     }
+
 });

@@ -27,42 +27,104 @@ Spotify, Google Music
 Why future? The above services only use "chopped-up" files (a compilation .xhr files).
 The fix would need to combine multiple .xhr files into one .mp3 which requires more server power than a chrome extension can allow.
 */
+// const LUTE_COLOR = '#009688';
 
 log("Lute " + chrome.app.getDetails().version + " has started.", 1);
 log("Legend [ '-': General, '*': Media, '!': Important ]\n- Refresh Pandora or SoundCloud to get started.", 1);
 
 let lute = top.lute || {
+    service: null,
     downloadReady: false,
-    audioFound: {
-        metadata: []
+    audio: {
+        url: null,
+        metadata: null
     }
 };
 
-const LUTE_COLOR = '#009688';
+/* Chrome API */
+chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
 
-// Start Lute
+    if (changeInfo.status == "loading") {
+
+        let service = getServiceOptions(tab);
+
+        if (lute.service && lute.service.tabId === tabId) {
+            lute.stop();
+        }
+
+        if (service) {
+            service.tabId = tabId;
+            console.debug('service: ', service);
+            lute.start(service);
+        }
+    }
+});
+
+chrome.tabs.onRemoved.addListener(function (tabId) {
+    if (tabId == lute.tabId) {
+        lute.stop();
+    }
+});
+
+
+chrome.runtime.onInstalled.addListener(function (details) {
+    chrome.storage.sync.set({
+        themes: {
+            pandoraZero: 'enabled'
+        },
+        icon: {
+            outsideColor: "transparent",
+            borderColor: "#9E9E9E"
+        },
+        luteCompile: 'disabled'
+    });
+});
+
+function getServiceOptions(tab) {
+    let url = tab.url;
+    let isPandora = url.match(/pandora.com/);
+    let isSoundCloud = url.match(/soundcloud.com/);
+
+    if (isPandora) {
+        return {
+            tabId: tab.id,
+            name: 'pandora',
+            color: '#369',
+            matches: ['/access', '.p-cdn'],
+            urls: ['*://*.pandora.com/*', '*://*.p-cdn/*']
+        };
+    } else if (isSoundCloud) {
+        return {
+            tabId: tab.id,
+            name: 'soundcloud',
+            color: '#f70',
+            matches: ['media.sndcdn'],
+            unsupported: [{
+                matches: ['-hls-media.sndcdn'],
+                message: 'Chopped-up audio file'
+            }],
+            urls: ['*://*.sndcdn.com/*']
+        };
+    } else {
+        return null;
+    }
+}
+
 lute.start = function (service) {
-    lute.reset();
+    // lute.reset();
 
     lute.service = service;
 
     chrome.webRequest.onBeforeRequest.addListener(serviceRequestListener, {
-        urls: service.servers,
-        tabId: lute.tabId
+        urls: service.urls,
+        tabId: service.tabId
     }, ["requestBody"]);
 
     chrome.browserAction.setTitle({
         title: "Lute is listening to " + service.name
     });
 
-    log('Lute is listening to ' + service.name + ' on tabId ' + lute.tabId, 2);
-};
-
-// Stop Lute
-lute.stop = function () {
-    chrome.webRequest.onBeforeRequest.removeListener(serviceRequestListener);
-    log('Lute is no longer listening to ' + lute.service.name, 2);
-    lute.reset();
+    log('Lute is listening to ' + service.name + ' on tabId ' + service.tabId, 2);
 };
 
 // Reset Lute
@@ -81,19 +143,27 @@ lute.reset = function () {
     setIcon(0);
 };
 
+// Stop Lute
+lute.stop = function () {
+    chrome.webRequest.onBeforeRequest.removeListener(serviceRequestListener);
+    let service = lute.service;
+    log('Lute is no longer listening to ' + service.name + ' on tabId ' + service.tabId, 2);
+    lute.reset();
+};
+
+
 function serviceRequestListener(request) {
     //log("Request from tabId " + request.tabId + ": " + JSON.stringify(request),1);
     let url = request.url;
     let service = lute.service;
-    let unsupportedMatches = service.unsupported ? service.unsupported : false;
-    let hasUnsupportedMatch = false;
+    let unsupportedMatches = service.unsupported;
 
     // check if url has unsupported match i.e chopped-up files
     if (unsupportedMatches) {
         for (let i in unsupportedMatches) {
             if (hasMatch(unsupportedMatches[i].matches, url)) {
                 log(unsupportedMatches[i].message + ' found on service ' + lute.service.name + ' on ' + url, 3);
-                lute.reset();
+                // lute.reset();
                 return false;
             }
         }
@@ -101,53 +171,58 @@ function serviceRequestListener(request) {
     // check if url is a media/ audio file
     let matches = lute.service.matches;
     if (hasMatch(matches, url)) {
-        lute.audioFound.url = url;
+        lute.reset();
+        lute.audio.url = url;
         log('URL found for audio file: ' + url, 1);
-        getMetadataFromPage();
+        setTimeout(function () {
+            getMetadataFromPage(request.tabId);
+        }, 1000);
         return true;
     }
 }
 
 // Get Metadata from Page
-function getMetadataFromPage() {
-    chrome.tabs.query({
-        active: true,
-        currentWindow: true
-    }, function (tabs) {
-        chrome.tabs.sendMessage(tabs[0].id, {
-            action: "getMetadata"
-        }, function (response) {
-            console.debug('response received: ', response);
-            lute.audioFound.metadata = response.metadata;
-            notify();
-        });
+function getMetadataFromPage(tabId) {
+    chrome.tabs.sendMessage(tabId, {
+        action: "getMetadata"
+    }, function (response) {
+        lute.audio.metadata = response.metadata;
+        log('Metadata collected for audio file: ' + JSON.stringify(response.metadata), 1);
+        notify();
     });
 }
 
 function notify() {
+
+    let filename = (lute.audio.metadata.artist + "-" + lute.audio.metadata.songName).replace(/^[\\\/\.:?:<>|]/gi, '');
+    lute.audio.filename = filename;
+
     // set icon title
     chrome.browserAction.setTitle({
-        title: lute.audioFound.filename
+        title: filename
     });
+
     // set icon background color
     let serviceColor = lute.service.color;
     chrome.browserAction.setBadgeBackgroundColor({
         "color": serviceColor
     });
+
     // set icon badge text
     chrome.browserAction.setBadgeText({
         text: "1"
     });
+
     // set icon image
     chrome.storage.sync.get("icon", function (data) {
-        var colors = {
+        let colors = {
             inside: serviceColor,
             outside: data.icon.outsideColor,
             border: data.icon.borderColor
         };
         setIcon(75, colors);
         // animateIcon(0, 75);
-        log(lute.audioFound.filename + " is ready to download.", 2);
+        log(filename + " is ready to download.", 2);
     });
 }
 
@@ -167,45 +242,32 @@ function hasMatch(needles, haystack) {
     return hasMatch;
 }
 
-// Check if download is ready
-lute.isDownloadReady = function () {
-    if (!lute.audioFound.hasOwnProperty('url')) {
-        log('Download not ready because there isn\'t a url for the media file', 1);
-        lute.downloadReady = false;
-        return false;
-    } else if (!lute.audioFound.hasOwnProperty('filename')) {
-        log('Download not ready because there isn\'t a filename for the media file', 1);
-        lute.downloadReady = false;
-        return false;
-    } else {
-        lute.downloadReady = true;
-        return true;
-    }
-}
+chrome.browserAction.onClicked.addListener(function () {
+    lute.downloadAudioFile();
+});
 
 // Download audio file
 lute.downloadAudioFile = function () {
-    // if (lute.isDownloadReady()) {
-    let audioFile = lute.audioFound;
-    let url = audioFile.url;
-    let metadata = audioFound.metadata;
-    let filename = audioFile.filename + audioFile.metadata.fileExtension;
+    let audio = lute.audio;
+    let url = audio.url;
+    let filename = audio.filename + audio.metadata.fileExtension;
 
     downloadFile(url, filename);
 
     chrome.storage.sync.get('luteCompile', function (data) {
         if (data.luteCompile === 'enabled') {
+            let metadata = audio.metadata;
             downloadJSONFile(metadata, filename);
         }
     });
-    // };
+
 };
 
 function downloadFile(url, filename) {
     log("Downloading file: " + filename + " from " + url, 1);
     chrome.downloads.download({
-        url,
-        filename
+        url: url,
+        filename: filename
     });
 }
 
@@ -217,131 +279,6 @@ function downloadJSONFile(json, filename) {
     anchor.click();
 }
 
-/* isSupportedService
- * checks if the url is a match to a supported service
- * @params url of a new/ updated browser tab
- * @return a service object or false
- */
-lute.isSupportedService = function (url) {
-    let isPandora = url.match(/pandora.com/);
-    let isSoundCloud = url.match(/soundcloud.com/);
-
-    if (isPandora) {
-        return {
-            name: 'pandora',
-            color: '#369',
-            matches: ['audio-', '.p-cdn'],
-            servers: ['*://*.pandora.com/*', '*://*.p-cdn/*']
-        };
-    } else if (isSoundCloud) {
-        return {
-            name: 'soundcloud',
-            color: '#f70',
-            matches: ['media.sndcdn'],
-            unsupported: [{
-                matches: ['-hls-media.sndcdn'],
-                message: 'Chopped-up audio file'
-            }],
-            servers: ['*://*.sndcdn.com/*']
-        };
-    }
-    return false;
-};
-
-/* Chrome API */
-chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
-    if (changeInfo.status == "loading") {
-        let supportedService = lute.isSupportedService(tab.url);
-
-        if (lute.tabId === tabId) {
-            lute.stop();
-        }
-
-        if (supportedService) {
-            lute.tabId = tabId;
-            lute.start(supportedService);
-        }
-    }
-});
-
-chrome.tabs.onRemoved.addListener(function (tabId) {
-    if (tabId == lute.tabId) {
-        lute.stop();
-    }
-});
-
-chrome.browserAction.onClicked.addListener(function () {
-    lute.downloadAudioFile();
-});
-
-/* Message passing from Content Scripts */
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    if (!request.hasOwnProperty("lute")) return;
-    let message = request.lute;
-    log("Message received from content script: " + JSON.stringify(message), 1);
-
-    /* Handle Metadata from content scripts */
-    if (message.metaData) {
-        validateMetaData(request.lute.metaData);
-    }
-
-    /* Message Actions */
-    let action = message.action;
-    switch (action) {
-        case 'downloadAudioFile':
-            lute.downloadAudioFile();
-            return true;
-        case 'notify':
-            lute.notify();
-            return true;
-        default:
-            return false;
-    }
-});
-
-chrome.runtime.onInstalled.addListener(function (details) {
-    lute.reset();
-    chrome.storage.sync.set({
-        themes: {
-            pandoraZero: 'enabled'
-        },
-        icon: {
-            outsideColor: "transparent",
-            borderColor: "#9E9E9E"
-        },
-        luteCompile: 'disabled'
-    });
-});
-
-
-function validateMetaData(metadata) {
-    const DEFAULT_PROPERTIES = {
-        songName: "unknown",
-        artist: "unknown",
-        fileExtension: ".mp3",
-        album: "unknown",
-        albumArtwork: "unknown.jpg"
-    };
-    lute.audioFound.metadata = {};
-    // If specific metaData information is missing, use the default property
-    for (var prop in DEFAULT_PROPERTIES) {
-        if (metadata.hasOwnProperty(prop)) {
-            lute.audioFound.metadata[prop] = metadata[prop];
-        } else {
-            lute.audioFound.metadata[prop] = DEFAULT_PROPERTIES[prop];
-            log('Metadata doesn\'t contain the property "' + prop + '" and will use the default value "' + DEFAULT_PROPERTIES[prop] + '"', 1);
-        }
-    }
-
-    // create filename
-    let artist = lute.audioFound.metadata.artist;
-    let songName = lute.audioFound.metadata.songName;
-    let fileExtension = lute.audioFound.metadata.fileExtension;
-    lute.audioFound.filename = (artist + "-" + songName).replace(/^[\\\/\.:?:<>|]/gi, '');
-
-    log('Metadata collected for audio file: ' + JSON.stringify(lute.audioFound.metadata), 1);
-    lute.notify();
-}
 
 function log(msg, lvl) {
     // '-': General, '*': Media (Debug), '!': Important (Error)
@@ -354,14 +291,12 @@ function log(msg, lvl) {
     }
 }
 
-
-
 /***********************************************************************
                           LUTE ICON
 ***********************************************************************/
 /* Draw Icon */
 function setIcon(angle, colors) {
-    const CANVAS_LENGTH = 16;
+    const CANVAS_LENGTH = 64;
 
     let tmpCanvas = document.createElement("canvas");
     tmpCanvas.height = CANVAS_LENGTH;
@@ -424,7 +359,7 @@ function setIcon(angle, colors) {
     */
     /*  1. Base  */
     // Base Front
-    var baseFront = {
+    let baseFront = {
         p1: {
             x: PADDING,
             y: CANVAS_LENGTH - PADDING - fY - BOX_HEIGHT
@@ -443,7 +378,7 @@ function setIcon(angle, colors) {
         }
     };
     // Base Inside
-    var baseInside = {
+    let baseInside = {
         p1: {
             x: PADDING + sX,
             y: CANVAS_LENGTH - PADDING - fY - sY - BOX_HEIGHT
@@ -462,7 +397,7 @@ function setIcon(angle, colors) {
         }
     };
     // Base Side
-    var baseSide = {
+    let baseSide = {
         p1: {
             x: PADDING + fX,
             y: CANVAS_LENGTH - PADDING - BOX_HEIGHT
@@ -483,7 +418,7 @@ function setIcon(angle, colors) {
 
     /*  2. Lid  */
     // Lid Side Right
-    var lidSideR = {
+    let lidSideR = {
         p3: {
             x: PADDING + fX + sX,
             y: CANVAS_LENGTH - PADDING - sY - BOX_HEIGHT
@@ -511,7 +446,7 @@ function setIcon(angle, colors) {
         y: CANVAS_LENGTH - PADDING - sY - BOX_HEIGHT - LID_HEIGHT
     });
     // Lid Side Left
-    var lidSideL = {
+    let lidSideL = {
         p3: {
             x: PADDING + sX,
             y: CANVAS_LENGTH - PADDING - fY - BOX_HEIGHT - sY
@@ -539,21 +474,21 @@ function setIcon(angle, colors) {
         y: CANVAS_LENGTH - PADDING - fY - sY - BOX_HEIGHT - LID_HEIGHT
     });
 
-    var lidSideC = {
+    let lidSideC = {
         p1: getCenterPoint(lidSideL.p1, lidSideR.p1),
         p2: getCenterPoint(lidSideL.p2, lidSideR.p2),
         p3: getCenterPoint(lidSideL.p3, lidSideR.p3),
         p4: getCenterPoint(lidSideL.p4, lidSideR.p4)
     };
 
-    var lidFront = {
+    let lidFront = {
         p1: lidSideL.p1,
         p2: lidSideL.p2,
         p3: lidSideR.p2,
         p4: lidSideR.p1
     };
 
-    var lidTop = {
+    let lidTop = {
         p1: {
             x: PADDING + sX,
             y: CANVAS_LENGTH - PADDING - fY - sY - BOX_HEIGHT - LID_HEIGHT
@@ -563,7 +498,7 @@ function setIcon(angle, colors) {
         p4: lidSideR.p4
     };
 
-    var lidInside = {
+    let lidInside = {
         p1: lidSideL.p2,
         p2: lidSideL.p3,
         p3: lidSideR.p3,
@@ -621,7 +556,7 @@ function setIcon(angle, colors) {
         //const NOTE_STROKE = "#0F0";
         ctx.fillStyle = color;
 
-        var musicNoteOutline = {};
+        let musicNoteOutline = {};
         musicNoteOutline.p1 = {
             x: ICON_LENGTH / 2 - NOTE_WIDTH / 5,
             y: ICON_LENGTH / 2 - NOTE_HEIGHT,
@@ -722,7 +657,7 @@ function animateIcon(startAngle, endAngle) {
     let degrees = startAngle;
     chrome.storage.sync.get("icon", function (data) {
         let serviceColor = lute.service.color;
-        var colors = {
+        let colors = {
             inside: serviceColor,
             outside: data.icon["outside-color"],
             border: data.icon["border-color"]
