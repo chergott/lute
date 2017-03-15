@@ -1,16 +1,5 @@
 $(document).ready(function () {
 
-    chrome.storage.sync.get("themes", function (data) {
-
-        if (data.themes.pandoraZero == 'enabled') {
-            console.debug("Pandora ZERO is enabled");
-            pandoraZEROTheme();
-
-        } else {
-            console.debug("Pandora ZERO is disabled. Go to Lute's Options page to enable.");
-        }
-    });
-
     chrome.runtime.onMessage.addListener(
         function (request, sender, sendResponse) {
             console.log(sender.tab ?

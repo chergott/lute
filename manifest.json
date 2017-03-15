@@ -10,7 +10,7 @@
   },
   "offline_enabled": false,
   "options_ui": {
-    "page": "html/options.html",
+    "page": "options/template.html",
     "chrome_style": true
   },
   "browser_action": {
@@ -26,7 +26,7 @@
   ],
   "background": {
     "scripts": [
-      "js/lute.js"
+      "main/lute.js"
     ],
     "persistent": true
   },
@@ -36,8 +36,8 @@
         "*://*.pandora.com/*"
       ],
       "js": [
-        "js/jquery-2.1.4.min.js",
-        "js/pandora.js"
+        "external/jquery-2.1.4.min.js",
+        "main/pandora.js"
       ]
     },
     {
@@ -45,14 +45,13 @@
         "*://*.soundcloud.com/*"
       ],
       "js": [
-        "js/jquery-2.1.4.min.js",
-        "js/soundcloud.js"
+        "external/jquery-2.1.4.min.js",
+        "main/soundcloud.js"
       ]
     }
   ],
   "web_accessible_resources": [
-    "js/*",
-    "images/*",
-    "themes/*"
+    "main/*",
+    "images/*"
   ]
 }

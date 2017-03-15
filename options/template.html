@@ -4,9 +4,9 @@
 <head>
     <title>Lute Options</title>
     <script src="/js/jquery-2.1.4.min.js"></script>
-    <script src="/js/luteIcon.js"></script>
-    <script src="/js/options.js"></script>
-    <link rel="stylesheet" type="text/css" href="/css/options.css">
+    <script src="/js/icon.js"></script>
+    <script src="/options/component.js"></script>
+    <link rel="stylesheet" type="text/css" href="/options/styles.css">
 </head>
 
 <body>
@@ -18,14 +18,14 @@
         <section id="icon">
             <!-- Icon Settings -->
             <h2 class="subtitle">Icon </h2>
-            <p class="tip">Color Tips: <a class="link" href="https://material.google.com/style/color.html" target="_blank"> Google Design</a></p>
+            <p class="tip">Recommended Colors: <a class="link" href="https://material.google.com/style/color.html" target="_blank"> Google Design</a></p>
             <!-- Icon Colors -->
             <div id="icon-settings">
-                <!-- Outside Color -->
+                <!-- Background Color -->
                 <fieldset class="setting">
-                    <label>Outside Color</label>
-                    <input id="outside-color" class="input color" type="text" />
-                    <p class="error">Invalid outside color</p>
+                    <label>Background Color</label>
+                    <input id="background-color" class="input color" type="text" />
+                    <p class="error">Invalid background color</p>
                 </fieldset>
                 <!-- Border Color -->
                 <fieldset class="setting">
@@ -67,12 +67,12 @@
         <!-- Advanced -->
         <section id="advanced">
             <h3 class="subtitle">Advanced</h3>
-            <!-- Lute Compile -->
+            <!-- Compile -->
             <fieldset class="setting">
                 <label>JSON to Metadata</label>
-                <select id="lute-compile" class="fright">
-                    <option value="enabled">Enabled</option>
-                    <option value="disabled">Disabled</option>
+                <select id="compile" class="fright">
+                    <option value="true">Enabled</option>
+                    <option value="false">Disabled</option>
                 </select>
 
             </fieldset>
