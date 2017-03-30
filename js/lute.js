@@ -90,7 +90,7 @@ function getServiceOptions(tab) {
             tabId: tab.id,
             name: 'pandora',
             color: '#369',
-            matches: ['/access', '.p-cdn'],
+            matches: ['/access'],
             urls: ['*://*.pandora.com/*', '*://*.p-cdn/*']
         };
     } else if (isSoundCloud) {
@@ -176,7 +176,7 @@ function serviceRequestListener(request) {
         log('URL found for audio file: ' + url, 1);
         setTimeout(function () {
             getMetadataFromPage(request.tabId);
-        }, 1000);
+        }, 1500);
         return true;
     }
 }
@@ -194,7 +194,7 @@ function getMetadataFromPage(tabId) {
 
 function notify() {
 
-    let filename = (lute.audio.metadata.artist + "-" + lute.audio.metadata.songName).replace(/^[\\\/\.:?:<>|]/gi, '');
+    let filename = (lute.audio.metadata.artist + "-" + lute.audio.metadata.title).replace(/^[\\\/\.:?:<>|]/gi, '');
     lute.audio.filename = filename;
 
     // set icon title
@@ -214,16 +214,14 @@ function notify() {
     });
 
     // set icon image
-    chrome.storage.sync.get("icon", function (data) {
-        let colors = {
-            inside: serviceColor,
-            outside: data.icon.outsideColor,
-            border: data.icon.borderColor
-        };
-        setIcon(75, colors);
-        // animateIcon(0, 75);
-        log(filename + " is ready to download.", 2);
-    });
+    let colors = {
+        inside: serviceColor,
+        outside: 'transparent',
+        border: '#9E9E9E'
+    };
+    setIcon(75, colors);
+    // animateIcon(0, 75);
+    log(filename + " is ready to download.", 2);
 }
 
 /* Supplementary Functions */
@@ -254,10 +252,10 @@ lute.downloadAudioFile = function () {
 
     downloadFile(url, filename);
 
-    chrome.storage.sync.get('luteCompile', function (data) {
-        if (data.luteCompile === 'enabled') {
+    chrome.storage.sync.get('downloadMetadata', function (data) {
+        if (data.downloadMetadata) {
             let metadata = audio.metadata;
-            downloadJSONFile(metadata, filename);
+            downloadJSONFile(metadata, audio.filename);
         }
     });
 

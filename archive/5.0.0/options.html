@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Lute Options</title>
+    <!--<script src="/js/luteIcon.js"></script>-->
+    <script src="/js/options.js"></script>
+    <link rel="stylesheet" type="text/css" href="/css/options.css">
+</head>
+
+<body>
+    <!-- Main -->
+    <main id="content">
+        
+        <div id="status"></div>
+        <section id="icon">
+            <h2 class="subtitle">Icon </h2>
+            <p class="tip">Color Tips: <a class="link" href="https://material.google.com/style/color.html" target="_blank"> Google Design</a></p>
+            <div id="icon-settings">
+                <fieldset class="setting">
+                    <label>Outside Color</label>
+                    <input id="outside-color" class="input color" type="text" />
+                    <p class="error">Invalid outside color</p>
+                </fieldset>
+                <fieldset class="setting">
+                    <label>Border Color</label>
+                    <input id="border-color" class="input color" type="text" />
+                    <p class="error">Invalid border color</p>
+                </fieldset>
+                <fieldset class="setting">
+                    <label>Service</label>
+                    <select id="service-colors" class="input">
+                        <option selected value="#009688">Lute</option>
+                        <option value="#369">Pandora</option>
+                        <option value="#f70">SoundCloud</option>
+                    </select>
+                </fieldset>
+            </div>
+            <canvas id="icon-canvas" width="180" height="180"></canvas>
+            <div id="icon-buttons">
+                <button id="applyIcon" class="button fleft">Apply</button>
+                <button id="animateIcon" class="button fright">Animate</button>
+            </div>
+        </section>
+        <section id="themes">
+            <h2 class="subtitle">Themes</h2>
+            <fieldset class="setting">
+                <label>Pandora ZERO</label>
+                <select id="pandora-zero" class="fright">
+                    <option value="enabled">Enabled</option>
+                    <option value="disabled">Disabled</option>
+                </select>
+            </fieldset>
+            <p class="tip">Removed advertisement banners and gives the additional feature of refreshing skip count.</p>
+        </section>
+        <!-- Advanced -->
+        <section id="advanced">
+            <h3 class="subtitle">Advanced</h3>
+            <fieldset class="setting">
+                <label>Download Metadata</label>
+                <div class="toggle-metadata-download fright">
+                    <input type="checkbox" value="None" id="toggle-metadata-download" name="check" />
+                    <label for="toggle-metadata-download"></label>
+                </div>
+            </fieldset>
+            <p class="tip">Download .json file with every audio file that contains additional information like album and album artwork
+                url. For use with NPM project "lute".</p>
+        </section>
+        <!-- Footer -->
+        <footer>
+            <!-- Version -->
+            <p>Current Version: <span id="version"></span></p>
+            <!-- Reset -->
+            <button id="reset">Reset</button>
+        </footer>
+    </main>
+</body>
+
+</html>

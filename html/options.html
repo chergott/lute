@@ -3,8 +3,6 @@
 
 <head>
     <title>Lute Options</title>
-    <script src="/js/jquery-2.1.4.min.js"></script>
-    <script src="/js/luteIcon.js"></script>
     <script src="/js/options.js"></script>
     <link rel="stylesheet" type="text/css" href="/css/options.css">
 </head>
@@ -12,71 +10,18 @@
 <body>
     <!-- Main -->
     <main id="content">
-        <!-- Status -->
-        <div id="status"></div>
-        <!-- Icon -->
-        <section id="icon">
-            <!-- Icon Settings -->
-            <h2 class="subtitle">Icon </h2>
-            <p class="tip">Color Tips: <a class="link" href="https://material.google.com/style/color.html" target="_blank"> Google Design</a></p>
-            <!-- Icon Colors -->
-            <div id="icon-settings">
-                <!-- Outside Color -->
-                <fieldset class="setting">
-                    <label>Outside Color</label>
-                    <input id="outside-color" class="input color" type="text" />
-                    <p class="error">Invalid outside color</p>
-                </fieldset>
-                <!-- Border Color -->
-                <fieldset class="setting">
-                    <label>Border Color</label>
-                    <input id="border-color" class="input color" type="text" />
-                    <p class="error">Invalid border color</p>
-                </fieldset>
-                <!-- Service Color -->
-                <fieldset class="setting">
-                    <label>Service</label>
-                    <select id="service-colors" class="input">
-                        <option selected value="#009688">Lute</option>
-                        <option value="#369">Pandora</option>
-                        <option value="#f70">SoundCloud</option>
-                    </select>
-                </fieldset>
-            </div>
-            <!-- Icon Canvas -->
-            <canvas id="icon-canvas" width="180" height="180"></canvas>
-            <!-- Icon Buttons -->
-            <div id="icon-buttons">
-                <button id="applyIcon" class="button fleft">Apply</button>
-                <button id="animateIcon" class="button fright">Animate</button>
-            </div>
-        </section>
-        <!-- Themes -->
-        <section id="themes">
-            <h2 class="subtitle">Themes</h2>
-            <!-- Pandora ZERO -->
-            <fieldset class="setting">
-                <label>Pandora ZERO</label>
-                <select id="pandora-zero" class="fright">
-                    <option value="enabled">Enabled</option>
-                    <option value="disabled">Disabled</option>
-                </select>
-            </fieldset>
-            <p class="tip">Removed advertisement banners and gives the additional feature of refreshing skip count.</p>
-        </section>
         <!-- Advanced -->
         <section id="advanced">
             <h3 class="subtitle">Advanced</h3>
-            <!-- Lute Compile -->
             <fieldset class="setting">
-                <label>JSON to Metadata</label>
-                <select id="lute-compile" class="fright">
-                    <option value="enabled">Enabled</option>
-                    <option value="disabled">Disabled</option>
-                </select>
-
+                <label>Download Metadata</label>
+                <div class="toggle-metadata-download fright">
+                    <input type="checkbox" value="None" id="toggle-metadata-download" name="check" />
+                    <label for="toggle-metadata-download"></label>
+                </div>
             </fieldset>
-            <p class="tip">Download .json file with every audio file that contains additional file metadata like album and album artwork. For use with NPM project json-to-metadata.</p>
+            <p class="tip">Download .json file with every audio file that contains additional information like album and album artwork
+                url. For use with NPM project "lute".</p>
         </section>
         <!-- Footer -->
         <footer>

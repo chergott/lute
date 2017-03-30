@@ -1,10 +1,10 @@
 {
   "manifest_version": 2,
   "name": "Lute",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "short_name": "Lute",
   "author":"CHergott",
-  "description": "Download music from music services like Pandora and SoundCloud.",
+  "description": "Download music from Pandora.",
   "icons": {
     "128": "images/lute-logo128.png"
   },
@@ -17,9 +17,8 @@
     "default_title": "Lute"
   },
   "permissions": [
-    "<all_urls>",
+    "*://*.pandora.com/*",
     "webRequest",
-    "webRequestBlocking",
     "downloads",
     "tabs",
     "storage"
@@ -36,17 +35,7 @@
         "*://*.pandora.com/*"
       ],
       "js": [
-        "js/jquery-2.1.4.min.js",
         "js/pandora.js"
-      ]
-    },
-    {
-      "matches": [
-        "*://*.soundcloud.com/*"
-      ],
-      "js": [
-        "js/jquery-2.1.4.min.js",
-        "js/soundcloud.js"
       ]
     }
   ],
