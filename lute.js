@@ -44,7 +44,7 @@ let lute = top.lute || {
 /* Chrome API */
 chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
 
-    if (changeInfo.status == "loading") {
+    if (changeInfo.status == "complete") {
 
         let service = getServiceOptions(tab);
 
@@ -54,30 +54,20 @@ chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
 
         if (service) {
             service.tabId = tabId;
-            console.debug('service: ', service);
             lute.start(service);
         }
     }
 });
 
 chrome.tabs.onRemoved.addListener(function (tabId) {
-    if (tabId == lute.tabId) {
+    if (lute.service && lute.service.tabId === tabId) {
         lute.stop();
     }
 });
 
 
 chrome.runtime.onInstalled.addListener(function (details) {
-    chrome.storage.sync.set({
-        themes: {
-            pandoraZero: 'enabled'
-        },
-        icon: {
-            outsideColor: "transparent",
-            borderColor: "#9E9E9E"
-        },
-        luteCompile: 'disabled'
-    });
+    lute.closeBox(); 
 });
 
 function getServiceOptions(tab) {
@@ -124,23 +114,22 @@ lute.start = function (service) {
         title: "Lute is listening to " + service.name
     });
 
+    chrome.browserAction.setBadgeBackgroundColor({
+        "color": service.color
+    });
+
     log('Lute is listening to ' + service.name + ' on tabId ' + service.tabId, 2);
+    // log(JSON.stringify(service), 1);
 };
 
 // Reset Lute
 lute.reset = function () {
     lute.downloadReady = false;
-    lute.audioFound = {};
-
-    chrome.browserAction.setBadgeText({
-        text: ""
-    });
-
-    chrome.browserAction.setTitle({
-        title: "Waiting for Pandora or SoundCloud"
-    });
-
-    setIcon(0);
+    lute.audio = {
+        metadata: null,
+        url: null
+    };
+    lute.closeBox();
 };
 
 // Stop Lute
@@ -163,7 +152,6 @@ function serviceRequestListener(request) {
         for (let i in unsupportedMatches) {
             if (hasMatch(unsupportedMatches[i].matches, url)) {
                 log(unsupportedMatches[i].message + ' found on service ' + lute.service.name + ' on ' + url, 3);
-                // lute.reset();
                 return false;
             }
         }
@@ -176,7 +164,7 @@ function serviceRequestListener(request) {
         log('URL found for audio file: ' + url, 1);
         setTimeout(function () {
             getMetadataFromPage(request.tabId);
-        }, 1500);
+        }, 1200);
         return true;
     }
 }
@@ -186,15 +174,21 @@ function getMetadataFromPage(tabId) {
     chrome.tabs.sendMessage(tabId, {
         action: "getMetadata"
     }, function (response) {
+        if (!response) {
+            console.error('Could not get metadata from service');
+            return;
+        }
         lute.audio.metadata = response.metadata;
+        lute.audio.filename = getFilename(response.metadata);
         log('Metadata collected for audio file: ' + JSON.stringify(response.metadata), 1);
-        notify();
+        log(lute.audio.filename + " is ready to download.", 2);
+        lute.openBox();
     });
 }
 
 function notify() {
 
-    let filename = (lute.audio.metadata.artist + "-" + lute.audio.metadata.title).replace(/^[\\\/\.:?:<>|]/gi, '');
+    let filename = getFilename(lute.audio.metadata);
     lute.audio.filename = filename;
 
     // set icon title
@@ -224,7 +218,15 @@ function notify() {
     log(filename + " is ready to download.", 2);
 }
 
+
 /* Supplementary Functions */
+function getFilename(metadata) {
+    let {
+        artist = 'unknown', title = 'unknown', fileExtension = '.mp3'
+    } = metadata;
+    return (artist + "-" + title).replace(/^[\\\/\.:?:<>|]/gi, '') + fileExtension;
+}
+
 function hasMatch(needles, haystack) {
     let hasMatch = false;
     needles.forEach((needle) => {
@@ -241,8 +243,71 @@ function hasMatch(needles, haystack) {
 }
 
 chrome.browserAction.onClicked.addListener(function () {
-    lute.downloadAudioFile();
+    let hasMetadata = !!(lute.audio.metadata);
+    let hasUrl = !!(lute.audio.url);
+    if (hasMetadata && hasUrl) {
+        lute.downloadAudioFile();
+    }
 });
+
+lute.openBox = function () {
+    chrome.storage.sync.get("icon", function (data) {
+
+        chrome.browserAction.setBadgeText({
+            text: "1"
+        });
+        chrome.browserAction.setTitle({
+            title: lute.audio.filename
+        });
+
+        let iconColors = {
+            inside: lute.service.color,
+            background: data.icon.backgroundColor,
+            border: data.icon.borderColor
+        };
+
+        let openIcon = drawIcon(75, iconColors);
+        lute.setIcon(openIcon);
+    });
+};
+
+lute.closeBox = function () {
+    chrome.browserAction.setBadgeText({
+        text: ""
+    });
+    chrome.browserAction.setTitle({
+        title: "Waiting for Pandora or SoundCloud"
+    });
+
+    let closedIcon = drawIcon(0);
+    lute.setIcon(closedIcon);
+};
+
+lute.setIcon = function (imageData) {
+    // set Extension Icon
+    chrome.browserAction.setIcon({
+        imageData
+    });
+};
+
+chrome.runtime.onMessage.addListener(
+    function (request, sender, sendResponse) {
+        console.log(sender.tab ?
+            "from a content script:" + sender.tab.url :
+            "from the extension");
+        if (request.icon) {
+            let {
+                degrees,
+                colors
+            } = request.icon;
+            let imageData = drawIcon(degrees, colors);
+            console.log('typeof ', typeof imageData);
+            console.log('imageData... ', imageData);
+            sendResponse({
+                imageData
+            });
+        }
+    });
 
 // Download audio file
 lute.downloadAudioFile = function () {
@@ -293,7 +358,7 @@ function log(msg, lvl) {
                           LUTE ICON
 ***********************************************************************/
 /* Draw Icon */
-function setIcon(angle, colors) {
+function drawIcon(angle, colors) {
     const CANVAS_LENGTH = 64;
 
     let tmpCanvas = document.createElement("canvas");
@@ -304,7 +369,7 @@ function setIcon(angle, colors) {
     colors = colors ? colors : {
         inside: 'transparent',
         border: '#9E9E9E',
-        outside: 'transparent'
+        background: 'transparent'
     };
 
     const PADDING = CANVAS_LENGTH * 0.05;
@@ -507,8 +572,8 @@ function setIcon(angle, colors) {
         fillStyle: colors.inside,
         strokeStyle: colors.border
     };
-    const OUTSIDE_ATTRIBUTES = {
-        fillStyle: colors.outside,
+    const BACKGROUND_ATTRIBUTES = {
+        fillStyle: colors.background,
         strokeStyle: colors.border
     };
 
@@ -520,27 +585,24 @@ function setIcon(angle, colors) {
     if (THETA > BRIGHT_ANGLE) {
         drawParallelogram(baseInside, INSIDE_ATTRIBUTES);
     } else {
-        drawParallelogram(baseInside, OUTSIDE_ATTRIBUTES);
+        drawParallelogram(baseInside, BACKGROUND_ATTRIBUTES);
     }
     ctx.lineWidth = THICKNESS;
-    drawParallelogram(baseSide, OUTSIDE_ATTRIBUTES);
-    drawParallelogram(baseFront, OUTSIDE_ATTRIBUTES);
+    drawParallelogram(baseSide, BACKGROUND_ATTRIBUTES);
+    drawParallelogram(baseFront, BACKGROUND_ATTRIBUTES);
     ctx.lineWidth = THICKNESS;
     if (THETA > BRIGHT_ANGLE) {
         const NOTE_COLOR = "#E0E0E0";
         drawParallelogram(lidInside, INSIDE_ATTRIBUTES);
         drawMusicNote(NOTE_COLOR);
     } else {
-        drawParallelogram(lidTop, OUTSIDE_ATTRIBUTES);
+        drawParallelogram(lidTop, BACKGROUND_ATTRIBUTES);
     }
     ctx.lineWidth = THICKNESS;
-    drawParallelogram(lidFront, OUTSIDE_ATTRIBUTES);
-    drawParallelogram(lidSideR, OUTSIDE_ATTRIBUTES);
+    drawParallelogram(lidFront, BACKGROUND_ATTRIBUTES);
+    drawParallelogram(lidSideR, BACKGROUND_ATTRIBUTES);
 
-    // set Extension Icon
-    chrome.browserAction.setIcon({
-        imageData: ctx.getImageData(0, 0, CANVAS_LENGTH, CANVAS_LENGTH)
-    });
+    return ctx.getImageData(0, 0, CANVAS_LENGTH, CANVAS_LENGTH);
 
     function drawMusicNote(color) {
         /* 
@@ -642,7 +704,7 @@ function setIcon(angle, colors) {
         return {
             x: (p1.x + p2.x) / 2,
             y: (p1.y + p2.y) / 2
-        }
+        };
     }
 }
 
@@ -657,7 +719,7 @@ function animateIcon(startAngle, endAngle) {
         let serviceColor = lute.service.color;
         let colors = {
             inside: serviceColor,
-            outside: data.icon["outside-color"],
+            background: data.icon["background-color"],
             border: data.icon["border-color"]
         };
         let animate = setInterval(function () {

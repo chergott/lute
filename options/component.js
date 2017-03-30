@@ -1,4 +1,3 @@
-let lute = {};
 window.onload = function () {
 
     let luteVersion = chrome.app.getDetails().version;
@@ -7,10 +6,12 @@ window.onload = function () {
 
     let toggleMetadata = document.getElementById('toggle-metadata-download');
 
+
     chrome.storage.sync.get(['downloadMetadata'], function (data) {
         let shouldDownloadMetadata = data.downloadMetadata;
         toggleMetadata.checked = shouldDownloadMetadata;
     });
+
 
     toggleMetadata.addEventListener("click", function () {
         let isChecked = toggleMetadata.checked;

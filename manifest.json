@@ -10,7 +10,7 @@
   },
   "offline_enabled": false,
   "options_ui": {
-    "page": "html/options.html",
+    "page": "options/index.html",
     "chrome_style": true
   },
   "browser_action": {
@@ -25,7 +25,7 @@
   ],
   "background": {
     "scripts": [
-      "js/lute.js"
+      "lute.js"
     ],
     "persistent": true
   },
@@ -35,13 +35,12 @@
         "*://*.pandora.com/*"
       ],
       "js": [
-        "js/pandora.js"
+        "services/pandora.js"
       ]
     }
   ],
   "web_accessible_resources": [
-    "js/*",
-    "images/*",
-    "themes/*"
+    "main/*",
+    "images/*"
   ]
 }
