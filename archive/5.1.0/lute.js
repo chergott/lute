@@ -106,6 +106,71 @@ lute.reset = function () {
     lute.closeBox();
 };
 
+function serviceRequestListener(request) {
+    //log("Request from tabId " + request.tabId + ": " + JSON.stringify(request),1);
+    let url = request.url;
+    let service = lute.service;
+    let unsupportedMatches = service.unsupported;
+
+    // check if url has unsupported match i.e chopped-up files
+    if (unsupportedMatches) {
+        for (let i in unsupportedMatches) {
+            if (hasMatch(unsupportedMatches[i].matches, url)) {
+                log(unsupportedMatches[i].message + ' found on service ' + lute.service.name + ' on ' + url, 3);
+                return false;
+            }
+        }
+    }
+    // check if url is a media/ audio file
+    let matches = lute.service.matches;
+    if (hasMatch(matches, url)) {
+        lute.reset();
+        lute.stageUrl(url);
+        startMetadataListenerOnTab(request.tabId);
+        // setTimeout(function () {
+        //     getMetadataFromPage(request.tabId);
+        // }, 1200);
+        return true;
+    }
+}
+
+
+function getServiceOptions(tab) {
+    let url = tab.url;
+    let isPandora = url.match(/pandora.com/);
+    let isSoundCloud = url.match(/soundcloud.com/);
+
+    if (isPandora) {
+        return {
+            tabId: tab.id,
+            name: 'pandora',
+            color: '#369',
+            matches: ['/access'],
+            urls: ['*://*.pandora.com/*', '*://*.p-cdn/*']
+        };
+    } else if (isSoundCloud) {
+        return {
+            tabId: tab.id,
+            name: 'soundcloud',
+            color: '#f70',
+            matches: ['media.sndcdn'],
+            unsupported: [{
+                matches: ['-hls-media.sndcdn'],
+                message: 'Chopped-up audio file'
+            }],
+            urls: ['*://*.sndcdn.com/*']
+        };
+    } else {
+        return null;
+    }
+}
+
+function startMetadataListenerOnTab(tabId) {
+    chrome.tabs.sendMessage(tabId, {
+        action: "startMetadataListener"
+    }, function (response) {});
+}
+
 lute.stageUrl = function (url) {
     log('URL found for audio file: ' + url, 1);
     lute.audio.url = url;
@@ -128,6 +193,23 @@ lute.foundLoot = function () {
         lute.openBox();
     }
 };
+
+// Get Metadata from Page
+function getMetadataFromPage(tabId) {
+    chrome.tabs.sendMessage(tabId, {
+        action: "getMetadata"
+    }, function (response) {
+        if (!response) {
+            console.error('Could not get metadata from service');
+            return;
+        }
+        lute.audio.metadata = response.metadata;
+        lute.audio.filename = getFilename(response.metadata);
+        log('Metadata collected for audio file: ' + JSON.stringify(response.metadata), 1);
+        log(lute.audio.filename + " is ready to download.", 2);
+        lute.openBox();
+    });
+}
 
 lute.openBox = function () {
     let filename = lute.audio.filename;
@@ -181,67 +263,6 @@ lute.setIcon = function (imageData) {
     });
 };
 
-function serviceRequestListener(request) {
-    //log("Request from tabId " + request.tabId + ": " + JSON.stringify(request),1);
-    let url = request.url;
-    let service = lute.service;
-    let unsupportedMatches = service.unsupported;
-
-    // check if url has unsupported match i.e chopped-up files
-    if (unsupportedMatches) {
-        for (let i in unsupportedMatches) {
-            if (hasMatch(unsupportedMatches[i].matches, url)) {
-                log(unsupportedMatches[i].message + ' found on service ' + lute.service.name + ' on ' + url, 3);
-                return false;
-            }
-        }
-    }
-    // check if url is a media/ audio file
-    let matches = lute.service.matches;
-    if (hasMatch(matches, url)) {
-        lute.reset();
-        lute.stageUrl(url);
-        startMetadataListenerOnTab(request.tabId);
-        return true;
-    }
-}
-
-function getServiceOptions(tab) {
-    let url = tab.url;
-    let isPandora = url.match(/pandora.com/);
-    let isSoundCloud = url.match(/soundcloud.com/);
-
-    if (isPandora) {
-        return {
-            tabId: tab.id,
-            name: 'pandora',
-            color: '#369',
-            matches: ['/access'],
-            urls: ['*://*.pandora.com/*', '*://*.p-cdn/*']
-        };
-    } else if (isSoundCloud) {
-        return {
-            tabId: tab.id,
-            name: 'soundcloud',
-            color: '#f70',
-            matches: ['media.sndcdn'],
-            unsupported: [{
-                matches: ['-hls-media.sndcdn'],
-                message: 'Chopped-up audio file'
-            }],
-            urls: ['*://*.sndcdn.com/*']
-        };
-    } else {
-        return null;
-    }
-}
-
-function startMetadataListenerOnTab(tabId) {
-    chrome.tabs.sendMessage(tabId, {
-        action: "startMetadataListener"
-    }, function (response) {});
-}
-
 /* Supplementary Functions */
 function getFilename(metadata) {
     let {
@@ -287,7 +308,7 @@ function downloadFile(url, filename) {
     log("Downloading file: " + filename + " from " + url, 1);
     chrome.downloads.download({
         url: url,
-        filename: '_lute/' + filename
+        filename: filename
     });
 }
 
@@ -295,7 +316,7 @@ function downloadJSONFile(json, filename) {
     json = encodeURIComponent(JSON.stringify(json));
     let anchor = document.createElement('a');
     anchor.href = 'data:text/json;charset=utf-8,' + json;
-    anchor.download =  filename.split('.')[0] + '.json';
+    anchor.download = filename + '.json';
     anchor.click();
 }
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Lute",
-  "version": "5.1.0",
+  "version": "5.3.0",
   "short_name": "Lute",
   "author":"CHergott",
   "description": "Download music from Pandora.",
@@ -36,7 +36,8 @@
       ],
       "js": [
         "services/pandora.js"
-      ]
+      ],
+      "run_at": "document_end"
     }
   ],
   "web_accessible_resources": [
